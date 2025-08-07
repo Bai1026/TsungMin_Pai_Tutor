@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TsungMin Pai - 個人經歷目錄與分享</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #E0E0E0;
+            background: linear-gradient(135deg, #1E1E1E 0%, #2C2C2C 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding: 40px 0;
+            background: rgba(187, 134, 252, 0.1);
+            border-radius: 15px;
+            border: 1px solid rgba(187, 134, 252, 0.3);
+        }
+
+        header h1 {
+            font-size: 3em;
+            color: #BB86FC;
+            margin-bottom: 15px;
+            text-shadow: 0 2px 10px rgba(187, 134, 252, 0.3);
+        }
+
+        header p {
+            font-size: 1.2em;
+            color: #CCCCCC;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .timeline-section {
+            margin: 40px 0;
+        }
+
+        .section-title {
+            font-size: 2.5em;
+            color: #03DAC6;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #03DAC6;
+            padding-bottom: 15px;
+        }
+
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .timeline-card {
+            background: linear-gradient(145deg, #2C2C2C, #1E1E1E);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(187, 134, 252, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .timeline-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(187, 134, 252, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .timeline-card:hover::before {
+            left: 100%;
+        }
+
+        .timeline-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(187, 134, 252, 0.2);
+            border-color: #BB86FC;
+        }
+
+        .timeline-date {
+            color: #03DAC6;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            background: rgba(3, 218, 198, 0.1);
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+
+        .timeline-title {
+            font-size: 1.8em;
+            color: #BB86FC;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .timeline-description {
+            color: #CCCCCC;
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+
+        .timeline-link {
+            display: inline-block;
+            padding: 12px 25px;
+            background: linear-gradient(45deg, #BB86FC, #03DAC6);
+            color: #1E1E1E;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 1;
+        }
+
+        .timeline-link:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(187, 134, 252, 0.4);
+        }
+
+        .coming-soon {
+            opacity: 0.6;
+            border-style: dashed;
+        }
+
+        .coming-soon .timeline-link {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 30px 0;
+            border-top: 1px solid #333;
+            color: #777;
+        }
+
+        .highlight {
+            background-color: rgba(3, 218, 198, 0.15);
+            color: #03DAC6;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        .tag {
+            display: inline-block;
+            background: rgba(187, 134, 252, 0.2);
+            color: #BB86FC;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>TsungMin Pai</h1>
+            <p>歡迎來到我的個人經歷目錄與分享空間。這裡記錄了我在學術研究、技術探索、以及人生各個階段的重要里程碑與心得分享。</p>
+        </header>
+
+        <main>
+            <section class="timeline-section">
+                <h2 class="section-title">經歷時間軸</h2>
+                
+                <div class="timeline-grid">
+                    <!-- 2024.08.07 - Paper 主題 -->
+                    <div class="timeline-card">
+                        <div class="timeline-date">2024.08.07</div>
+                        <h3 class="timeline-title">學術研究分享</h3>
+                        <p class="timeline-description">
+                            <span class="tag">研究論文</span>
+                            <span class="tag">多代理人系統</span>
+                            <span class="tag">創造力評估</span>
+                        </p>
+                        <p class="timeline-description">
+                            分享我在 AI 領域的研究成果，特別是 <span class="highlight">CREA-AGENT</span> 專案的完整經驗與技術細節。透過多代理人架構探索大型語言模型的創造力邊界。
+                        </p>
+                        <a href="paper.html" class="timeline-link">閱讀詳細內容 →</a>
+                    </div>
+
+                    <!-- 預留未來主題 -->
+                    <div class="timeline-card coming-soon">
+                        <div class="timeline-date">2024.09</div>
+                        <h3 class="timeline-title">技術開發心得</h3>
+                        <p class="timeline-description">
+                            <span class="tag">軟體開發</span>
+                            <span class="tag">程式碼分享</span>
+                        </p>
+                        <p class="timeline-description">
+                            即將分享在軟體開發過程中的技術心得、解決方案與最佳實踐經驗。
+                        </p>
+                        <a href="#" class="timeline-link">敬請期待</a>
+                    </div>
+
+                    <div class="timeline-card coming-soon">
+                        <div class="timeline-date">2024.10</div>
+                        <h3 class="timeline-title">學習歷程回顧</h3>
+                        <p class="timeline-description">
+                            <span class="tag">教育經歷</span>
+                            <span class="tag">個人成長</span>
+                        </p>
+                        <p class="timeline-description">
+                            回顧求學與學習過程中的重要轉捩點、挑戰與收穫，以及對未來學習者的建議。
+                        </p>
+                        <a href="#" class="timeline-link">敬請期待</a>
+                    </div>
+
+                    <div class="timeline-card coming-soon">
+                        <div class="timeline-date">2024.11</div>
+                        <h3 class="timeline-title">職涯經驗談</h3>
+                        <p class="timeline-description">
+                            <span class="tag">職場心得</span>
+                            <span class="tag">專案管理</span>
+                        </p>
+                        <p class="timeline-description">
+                            分享在職場中累積的實務經驗、團隊協作心得，以及專案管理的實戰秘訣。
+                        </p>
+                        <a href="#" class="timeline-link">敬請期待</a>
+                    </div>
+
+                    <div class="timeline-card coming-soon">
+                        <div class="timeline-date">2024.12</div>
+                        <h3 class="timeline-title">生活感悟</h3>
+                        <p class="timeline-description">
+                            <span class="tag">人生哲學</span>
+                            <span class="tag">生活分享</span>
+                        </p>
+                        <p class="timeline-description">
+                            記錄生活中的重要時刻、人生感悟，以及對於工作與生活平衡的思考與實踐。
+                        </p>
+                        <a href="#" class="timeline-link">敬請期待</a>
+                    </div>
+
+                    <div class="timeline-card coming-soon">
+                        <div class="timeline-date">持續更新</div>
+                        <h3 class="timeline-title">更多主題</h3>
+                        <p class="timeline-description">
+                            <span class="tag">持續分享</span>
+                            <span class="tag">多元內容</span>
+                        </p>
+                        <p class="timeline-description">
+                            這個空間會持續成長，記錄更多有趣的經歷、想法與發現，歡迎定期回來看看！
+                        </p>
+                        <a href="#" class="timeline-link">更多驚喜</a>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2025 TsungMin Pai - 個人經歷目錄與分享空間</p>
+        </footer>
+    </div>
+</body>
+</html>
