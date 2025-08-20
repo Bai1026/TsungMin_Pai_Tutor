@@ -1,0 +1,9 @@
+rag/data
+rag/data_official_all
+test_data
+chroma_db
+
+*.DS_Store
+__pycache__/
+*.pyc
+*.env
