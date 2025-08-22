@@ -6,30 +6,35 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import TextLoader
 from langchain.schema import Document
-from langchain_openai import OpenAI
+from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
 class LawRAGPipeline:
-    def __init__(self, openai_api_key: str, persist_directory: str = "./chroma_db"):
+    def __init__(self, openai_api_key: str, persist_directory: str = None):
         """
         初始化法律 RAG Pipeline
         
         Args:
             openai_api_key: OpenAI API 金鑰
-            persist_directory: 向量資料庫儲存目錄
+            persist_directory: 向量資料庫儲存目錄（如果不指定，會根據檔案名稱自動生成）
         """
         os.environ["OPENAI_API_KEY"] = openai_api_key
         
-        self.embeddings = OpenAIEmbeddings()
+        # self.embeddings = OpenAIEmbeddings()
+        self.embeddings = OpenAIEmbeddings(
+            model="text-embedding-3-large",  # 或 text-embedding-3-small
+            dimensions=1536  # 可調整維度
+        )
+        
         self.persist_directory = persist_directory
         self.vectorstore = None
         self.qa_chain = None
         
         # 法律專用的文本分割器設定
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
+            chunk_size=800,  # 減少片段大小
+            chunk_overlap=150,  # 減少重疊
             separators=["\n\n", "\n", "。", "；", "，", " ", ""]
         )
         
@@ -154,6 +159,29 @@ class LawRAGPipeline:
             
         return sections
     
+    def _generate_db_name(self, file_path: str) -> str:
+        """
+        根據檔案名稱生成資料庫名稱
+        
+        Args:
+            file_path: 檔案路徑
+            
+        Returns:
+            資料庫目錄路徑
+        """
+        # 取得檔案名稱（不包含路徑和副檔名）
+        file_name = os.path.splitext(os.path.basename(file_path))[0]
+        
+        # 建立 rag_db 目錄（如果不存在）
+        rag_db_dir = "./rag_db"
+        os.makedirs(rag_db_dir, exist_ok=True)
+        
+        # 生成資料庫名稱：檔案名_db
+        db_name = f"{file_name}_db"
+        db_path = os.path.join(rag_db_dir, db_name)
+        
+        return db_path
+
     def index_documents(self, file_path: str):
         """
         索引文件到向量資料庫
@@ -161,6 +189,11 @@ class LawRAGPipeline:
         Args:
             file_path: 文件路徑
         """
+        # 如果沒有指定 persist_directory，根據檔案名稱自動生成
+        if self.persist_directory is None:
+            self.persist_directory = self._generate_db_name(file_path)
+            print(f"自動生成資料庫路徑：{self.persist_directory}")
+        
         print("載入文件...")
         
         # 檢查文件是否存在
@@ -214,12 +247,25 @@ class LawRAGPipeline:
         
         self._setup_qa_chain()
     
-    def load_existing_index(self):
+    def load_existing_index(self, file_path: str = None):
         """
         載入現有的向量索引
+        
+        Args:
+            file_path: 如果指定，會根據檔案名稱載入對應的資料庫
         """
+        # 如果指定了檔案路徑且沒有設定 persist_directory，自動生成
+        if file_path and self.persist_directory is None:
+            self.persist_directory = self._generate_db_name(file_path)
+            print(f"自動生成資料庫路徑：{self.persist_directory}")
+        
+        # 如果還是沒有 persist_directory，提示用戶
+        if self.persist_directory is None:
+            print("錯誤：未指定資料庫路徑，請先呼叫 index_documents() 或在 load_existing_index() 中傳入檔案路徑")
+            return
+        
         if os.path.exists(self.persist_directory):
-            print("載入現有索引...")
+            print(f"載入現有索引：{self.persist_directory}")
             self.vectorstore = Chroma(
                 persist_directory=self.persist_directory,
                 embedding_function=self.embeddings
@@ -227,7 +273,7 @@ class LawRAGPipeline:
             self._setup_qa_chain()
             print("索引載入完成！")
         else:
-            print("未找到現有索引，請先執行 index_documents()")
+            print(f"未找到現有索引：{self.persist_directory}，請先執行 index_documents()")
     
     def _setup_qa_chain(self):
         """
@@ -255,10 +301,13 @@ class LawRAGPipeline:
         )
         
         self.qa_chain = RetrievalQA.from_chain_type(
-            llm=OpenAI(temperature=0.1),
+            llm=ChatOpenAI(
+                model="gpt-4o",
+                temperature=0.1
+            ),
             chain_type="stuff",
             retriever=self.vectorstore.as_retriever(
-                search_kwargs={"k": 5}  # 檢索前5個最相關的片段
+                search_kwargs={"k": 3}  # 檢索前3個最相關的片段（減少以避免上下文過長）
             ),
             chain_type_kwargs={"prompt": prompt},
             return_source_documents=True
@@ -325,29 +374,13 @@ def main():
     rag = LawRAGPipeline(OPENAI_API_KEY)
     
     # 索引文件
-    data_file = "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/rag/data/qa.txt"
+    # data_file = "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/rag/data/qa.txt"
+    data_file = "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/rag/data/specific_offences_ch1.txt"
     
     try:
         # 如果是第一次執行，建立索引
         rag.index_documents(data_file)
-        
-        # # 查詢範例
-        # questions = [
-        #     # "甲竊取他人財物後被發現，為了脫免逮捕而使用暴力，這樣的行為如何定罪？",
-        #     # "什麼是準強盗罪？構成要件有哪些？",
-        #     # "竊盜罪和強盗罪的區別是什麼？"
-        #     "會不會成立重傷？"
-        # ]
-        
-        # for question in questions:
-        #     print(f"\n{'='*50}")
-        #     result = rag.query(question)
-        #     print(f"問題：{question}")
-        #     print(f"回答：{result['answer']}")
-        #     print(f"\n參考資料來源：")
-        #     for i, doc in enumerate(result['source_documents']):
-        #         print(f"{i+1}. {doc.metadata.get('title', '未知來源')} - {doc.metadata.get('section', '未知章節')}")
-                
+
     except Exception as e:
         print(f"發生錯誤：{e}")
         print("\n建議檢查：")

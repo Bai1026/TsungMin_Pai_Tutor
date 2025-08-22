@@ -56,7 +56,8 @@ def inspect_vectorstore_contents(rag_pipeline, max_documents: int = 10):
     print()
     
     # 顯示前幾個文件的詳細資訊
-    display_count = min(max_documents, total_docs)
+    # display_count = min(max_documents, total_docs)
+    display_count = 3
     
     for i in range(display_count):
         doc_content = results['documents'][i]
@@ -147,13 +148,16 @@ def main():
     rag = LawRAGPipeline(OPENAI_API_KEY)
     
     try:
-        # 載入現有索引
-        rag.load_existing_index()
+        # 指定要使用的資料檔案
+        # data_file = "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/rag/data/qa.txt"
+        data_file = "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/rag/data/specific_offences_ch1.txt"
+        
+        # 載入現有索引（傳入檔案路徑以自動產生對應的資料庫路徑）
+        rag.load_existing_index(data_file)
         
         # 如果沒有現有索引，建立新的
         if not rag.vectorstore:
             print("未找到現有索引，建立新索引...")
-            data_file = "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/rag/data/qa.txt"
             rag.index_documents(data_file)
         
         # # 測試問題

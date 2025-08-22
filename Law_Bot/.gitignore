@@ -7,3 +7,5 @@ chroma_db
 __pycache__/
 *.pyc
 *.env
+
+rag_db

@@ -45,9 +45,12 @@ def load_rag_pipeline():
         with st.spinner('正在初始化 RAG 系統...'):
             st.session_state.rag_pipeline = LawRAGPipeline(OPENAI_API_KEY)
             
-            # 嘗試載入現有索引
+            # 指定預設的資料檔案路徑
+            data_file = "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/rag/data/specific_offences_ch1.txt"
+            
+            # 嘗試載入現有索引（傳入檔案路徑）
             try:
-                st.session_state.rag_pipeline.load_existing_index()
+                st.session_state.rag_pipeline.load_existing_index(data_file)
                 if st.session_state.rag_pipeline.vectorstore:
                     st.session_state.vectorstore_loaded = True
                     st.success("✅ 成功載入現有索引！")
@@ -441,7 +444,7 @@ def main():
         
         # 建立索引按鈕
         if st.sidebar.button("🔄 建立新索引"):
-            data_file = "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/rag/data/qa.txt"
+            data_file = "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/rag/data/specific_offences_ch1.txt"
             if os.path.exists(data_file):
                 with st.spinner('正在建立索引...'):
                     try:
