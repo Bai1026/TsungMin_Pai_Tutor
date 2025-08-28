@@ -17,41 +17,40 @@ load_dotenv(find_dotenv())
 
 class LawBotAgent:
     """
-    法律機器人代理，整合主題選擇和 RAG 檢索功能
+    法律機器人代理，整合主題選擇和 RAG 檢索功能 (使用 Gemini)
     """
     
-    def __init__(self, openai_api_key: str = None):
+    def __init__(self, google_api_key: str = None):
         """
         初始化法律機器人代理
         
         Args:
-            openai_api_key: OpenAI API 金鑰
+            google_api_key: Google API 金鑰
         """
         # 取得 API 金鑰
-        self.openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
-        if not self.openai_api_key:
-            raise ValueError("未提供 OPENAI_API_KEY")
+        self.google_api_key = google_api_key or os.getenv("GOOGLE_API_KEY")
+        if not self.google_api_key:
+            raise ValueError("未提供 GOOGLE_API_KEY")
         
-        # 初始化 RAG Pipeline
-        self.rag_pipeline = LawRAGPipeline(self.openai_api_key)
+        # 初始化 RAG Pipeline (使用 Gemini)
+        self.rag_pipeline = LawRAGPipeline(self.google_api_key)
         
-        # TODO: 這邊會動態新增, 要改對應的 db
         # 主題到資料檔案的映射
         self.topic_to_file_mapping = {
             '侵害生命法益之犯罪': 'specific_offences_ch1.txt',
-            '侵害健康法益之犯罪': 'qa.txt',  # 暫時使用通用資料庫
-            '侵害自由法益犯罪': 'qa.txt',      # 暫時使用通用資料庫
-            '侵害名譽及信用犯罪': 'qa.txt',    # 暫時使用通用資料庫
-            '侵害秘密犯罪': 'qa.txt',          # 暫時使用通用資料庫
-            '侵害個別財產法益之犯罪': 'specific_offences_ch6.txt', # 暫時使用通用資料庫
-            'rag': 'qa.txt',                   # 一般法律諮詢
-            'others': None                     # 非法律問題
+            '侵害健康法益之犯罪': 'qa.txt',
+            '侵害自由法益犯罪': 'qa.txt',
+            '侵害名譽及信用犯罪': 'qa.txt',
+            '侵害秘密犯罪': 'qa.txt',
+            '侵害個別財產法益之犯罪': 'specific_offences_ch6.txt',
+            'rag': 'qa.txt',
+            'others': None
         }
         
         # 資料檔案的基礎路徑
         self.data_base_path = "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/rag/data"
         
-        logger.info("法律機器人代理初始化完成")
+        logger.info("法律機器人代理初始化完成 (使用 Gemini)")
     
     def process_query(self, user_query: str, verbose: bool = True) -> Dict:
         """
@@ -230,10 +229,10 @@ def main():
     主要執行函式，提供互動式查詢介面
     """
     try:
-        # 初始化法律機器人代理
+        # 初始化法律機器人代理 (使用 Gemini)
         agent = LawBotAgent()
         
-        print("⚖️ 法律機器人代理已啟動")
+        print("⚖️ 法律機器人代理已啟動 (使用 Gemini)")
         print("輸入 'quit' 或 'exit' 離開")
         print("輸入 'help' 查看可用指令")
         print("-" * 50)
@@ -289,7 +288,7 @@ def main():
                 
     except Exception as e:
         print(f"❌ 初始化失敗: {e}")
-        print("請檢查 OPENAI_API_KEY 是否已正確設定")
+        print("請檢查 GOOGLE_API_KEY 是否已正確設定")
 
 if __name__ == "__main__":
     main()

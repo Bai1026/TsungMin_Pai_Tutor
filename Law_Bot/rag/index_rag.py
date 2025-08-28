@@ -1,31 +1,69 @@
 import os
 from typing import List, Dict
 import re
+from pathlib import Path
+from dotenv import load_dotenv, find_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import TextLoader
 from langchain.schema import Document
-from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
 
+# 使用 Gemini 相關的匯入
+from langchain_google_genai import GoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+
 class LawRAGPipeline:
-    def __init__(self, openai_api_key: str, persist_directory: str = None):
+    def __init__(self, google_api_key: str = None, persist_directory: str = None):
         """
-        初始化法律 RAG Pipeline
+        初始化法律 RAG Pipeline (使用 Gemini)
         
         Args:
-            openai_api_key: OpenAI API 金鑰
-            persist_directory: 向量資料庫儲存目錄（如果不指定，會根據檔案名稱自動生成）
+            google_api_key: Google API 金鑰
+            persist_directory: 向量資料庫儲存目錄（如果不指定，會根據檔案名稱自動產生）
         """
-        os.environ["OPENAI_API_KEY"] = openai_api_key
         
-        # self.embeddings = OpenAIEmbeddings()
-        self.embeddings = OpenAIEmbeddings(
-            model="text-embedding-3-large",  # 或 text-embedding-3-small
-            dimensions=1536  # 可調整維度
-        )
+        # 如果沒有提供 API 金鑰，嘗試從環境變數載入
+        if not google_api_key:
+            # 嘗試載入多個可能的 .env 檔案位置
+            env_paths = [
+                ".env",                                    # 當前目錄
+                "../.env",                                # 上層目錄
+                "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/.env",  # 專案根目錄
+                "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/rag/.env"  # rag 目錄
+            ]
+            
+            for env_path in env_paths:
+                if os.path.exists(env_path):
+                    print(f"📁 載入環境變數檔案：{env_path}")
+                    load_dotenv(env_path)
+                    break
+            else:
+                print("⚠️ 未找到 .env 檔案，嘗試使用系統環境變數")
+            
+            # 嘗試取得 API 金鑰
+            google_api_key = (
+                os.getenv("GEMINI_API_KEY") or 
+                os.getenv("GOOGLE_API_KEY")
+            )
+            
+            if not google_api_key:
+                raise ValueError("未找到 GEMINI_API_KEY 或 GOOGLE_API_KEY。請設定環境變數或直接傳入 api_key 參數")
+        
+        # 設定環境變數
+        os.environ["GOOGLE_API_KEY"] = google_api_key
+        
+        print(f"🔑 使用 API 金鑰：{google_api_key[:10]}...{google_api_key[-5:]}")
+        
+        try:
+            # 使用 Gemini 的 embedding 模型
+            self.embeddings = GoogleGenerativeAIEmbeddings(
+                model="models/embedding-001"  # Gemini 的 embedding 模型
+            )
+            print("✅ Embedding 模型初始化成功")
+        except Exception as e:
+            print(f"❌ Embedding 模型初始化失敗：{e}")
+            raise
         
         self.persist_directory = persist_directory
         self.vectorstore = None
@@ -33,11 +71,11 @@ class LawRAGPipeline:
         
         # 法律專用的文本分割器設定
         self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=800,  # 減少片段大小
-            chunk_overlap=150,  # 減少重疊
+            chunk_size=1200,
+            chunk_overlap=200,
             separators=["\n\n", "\n", "。", "；", "，", " ", ""]
         )
-        
+    
     def parse_law_document(self, text: str) -> List[Document]:
         """
         解析法律考試文件，按題目分割
@@ -159,128 +197,111 @@ class LawRAGPipeline:
             
         return sections
     
-    def _generate_db_name(self, file_path: str) -> str:
+    def _get_persist_directory(self, file_path: str) -> str:
         """
-        根據檔案名稱生成資料庫名稱
+        根據檔案路徑生成對應的資料庫目錄路徑
         
         Args:
-            file_path: 檔案路徑
+            file_path: 資料檔案路徑
             
         Returns:
             資料庫目錄路徑
         """
-        # 取得檔案名稱（不包含路徑和副檔名）
-        file_name = os.path.splitext(os.path.basename(file_path))[0]
+        # 取得檔案名稱（不含副檔名）
+        file_name = Path(file_path).stem
         
-        # 建立 rag_db 目錄（如果不存在）
-        rag_db_dir = "./rag_db"
-        os.makedirs(rag_db_dir, exist_ok=True)
+        # 建立對應的資料庫目錄路徑
+        db_path = f"./rag_db/{file_name}_db"
         
-        # 生成資料庫名稱：檔案名_db
-        db_name = f"{file_name}_db"
-        db_path = os.path.join(rag_db_dir, db_name)
-        
+        print(f"自動生成資料庫路徑：{db_path}")
         return db_path
-
+    
     def index_documents(self, file_path: str):
         """
-        索引文件到向量資料庫
+        為文件建立向量索引
         
         Args:
-            file_path: 文件路徑
+            file_path: 文件檔案路徑
         """
-        # 如果沒有指定 persist_directory，根據檔案名稱自動生成
-        if self.persist_directory is None:
-            self.persist_directory = self._generate_db_name(file_path)
-            print(f"自動生成資料庫路徑：{self.persist_directory}")
-        
-        print("載入文件...")
-        
-        # 檢查文件是否存在
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"文件不存在: {file_path}")
-        
-        # 嘗試不同的編碼
-        encodings = ['utf-8', 'big5', 'gb2312', 'cp950']
-        raw_documents = None
-        
-        for encoding in encodings:
-            try:
-                loader = TextLoader(file_path, encoding=encoding)
-                raw_documents = loader.load()
-                print(f"成功使用 {encoding} 編碼載入文件")
-                break
-            except UnicodeDecodeError:
-                print(f"使用 {encoding} 編碼失敗，嘗試下一個...")
-                continue
-        
-        if not raw_documents:
-            raise ValueError("無法使用任何編碼載入文件")
-        
-        print("解析法律文件...")
-        law_documents = []
-        for doc in raw_documents:
-            print(f"原始文件長度: {len(doc.page_content)}")
-            parsed_docs = self.parse_law_document(doc.page_content)
-            law_documents.extend(parsed_docs)
-        
-        print(f"解析出 {len(law_documents)} 個文件片段")
-        
-        if not law_documents:
-            raise ValueError("沒有解析出任何文件片段，請檢查文件格式")
-        
-        print("分割文本...")
-        documents = self.text_splitter.split_documents(law_documents)
-        print(f"分割後共 {len(documents)} 個片段")
-        
-        if not documents:
-            raise ValueError("文本分割後沒有產生任何片段")
-        
-        print("建立向量索引...")
-        self.vectorstore = Chroma.from_documents(
-            documents=documents,
-            embedding=self.embeddings,
-            persist_directory=self.persist_directory
-        )
-        self.vectorstore.persist()
-        print("索引建立完成！")
-        
-        self._setup_qa_chain()
+        try:
+            # 設定資料庫目錄
+            self.persist_directory = self._get_persist_directory(file_path)
+            
+            # 載入文件
+            print("載入文件...")
+            documents = self.parse_law_document_from_file(file_path)
+            
+            if not documents:
+                print("⚠️ 未解析出任何文件片段")
+                return
+            
+            # 分割文本
+            print("分割文本...")
+            splits = self.text_splitter.split_documents(documents)
+            print(f"分割後共 {len(splits)} 個片段")
+            
+            # 建立向量索引
+            print("建立向量索引...")
+            self.vectorstore = Chroma.from_documents(
+                documents=splits,
+                embedding=self.embeddings,
+                persist_directory=self.persist_directory
+            )
+            
+            # 儲存索引
+            self.vectorstore.persist()
+            
+            # 設定問答鏈
+            self._setup_qa_chain()
+            
+            print(f"✅ 向量索引建立完成，共 {len(splits)} 個片段")
+            print(f"📁 索引儲存位置：{self.persist_directory}")
+            
+        except Exception as e:
+            print(f"發生錯誤：{e}")
+            print("\n建議檢查：")
+            print("1. 文件路徑是否正確")
+            print("2. 文件編碼是否正確")
+            print("3. API 金鑰是否有效")
+            print("4. 網路連線是否正常")
+            raise
     
     def load_existing_index(self, file_path: str = None):
         """
         載入現有的向量索引
         
         Args:
-            file_path: 如果指定，會根據檔案名稱載入對應的資料庫
+            file_path: 原始資料檔案路徑（用於生成資料庫路徑）
         """
-        # 如果指定了檔案路徑且沒有設定 persist_directory，自動生成
-        if file_path and self.persist_directory is None:
-            self.persist_directory = self._generate_db_name(file_path)
-            print(f"自動生成資料庫路徑：{self.persist_directory}")
+        if file_path:
+            self.persist_directory = self._get_persist_directory(file_path)
         
-        # 如果還是沒有 persist_directory，提示用戶
-        if self.persist_directory is None:
+        if not self.persist_directory:
             print("錯誤：未指定資料庫路徑，請先呼叫 index_documents() 或在 load_existing_index() 中傳入檔案路徑")
             return
         
         if os.path.exists(self.persist_directory):
-            print(f"載入現有索引：{self.persist_directory}")
-            self.vectorstore = Chroma(
-                persist_directory=self.persist_directory,
-                embedding_function=self.embeddings
-            )
-            self._setup_qa_chain()
-            print("索引載入完成！")
+            try:
+                print(f"載入現有索引：{self.persist_directory}")
+                self.vectorstore = Chroma(
+                    persist_directory=self.persist_directory,
+                    embedding_function=self.embeddings
+                )
+                self._setup_qa_chain()
+                print("✅ 現有索引載入成功")
+            except Exception as e:
+                print(f"❌ 載入現有索引失敗：{e}")
+                self.vectorstore = None
         else:
-            print(f"未找到現有索引：{self.persist_directory}，請先執行 index_documents()")
+            print(f"📝 未找到現有索引：{self.persist_directory}")
+            self.vectorstore = None
     
     def _setup_qa_chain(self):
         """
-        設定問答鏈
+        設定問答鏈 (使用 Gemini)
         """
         # 法律專用的提示模板
-        template = """你是一位專業的法律學者，專精於刑法。請根據以下相關的法律資料回答問題。
+        template = """你是一位專業的法律學者，專精於台灣刑法。請根據以下相關的法律資料回答問題。
 
 相關資料：
 {context}
@@ -300,14 +321,16 @@ class LawRAGPipeline:
             input_variables=["context", "question"]
         )
         
+        # 使用 Gemini Pro 模型
         self.qa_chain = RetrievalQA.from_chain_type(
-            llm=ChatOpenAI(
-                model="gpt-4o",
-                temperature=0.1
+            llm=GoogleGenerativeAI(
+                model="gemini-pro",  # 使用 Gemini Pro 模型
+                temperature=0.1,
+                max_output_tokens=2048  # 設定最大輸出長度
             ),
             chain_type="stuff",
             retriever=self.vectorstore.as_retriever(
-                search_kwargs={"k": 3}  # 檢索前3個最相關的片段（減少以避免上下文過長）
+                search_kwargs={"k": 5}  # Gemini 上下文較大，可以檢索更多片段
             ),
             chain_type_kwargs={"prompt": prompt},
             return_source_documents=True
@@ -352,41 +375,37 @@ class LawRAGPipeline:
 
 # 使用範例
 def main():
-    # 設定你的 OpenAI API 金鑰
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-    
-    if not OPENAI_API_KEY:
-        try:
-            from dotenv import load_dotenv
-            load_dotenv()
-            OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-        except ImportError:
-            pass
-    
-    if not OPENAI_API_KEY:
-        print("錯誤：請設定 OPENAI_API_KEY 環境變數")
-        print("可以使用以下方式之一：")
-        print("1. 設定環境變數：export OPENAI_API_KEY='your-api-key'")
-        print("2. 建立 .env 文件，內容：OPENAI_API_KEY=your-api-key")
-        return
-    
-    # 初始化 RAG pipeline
-    rag = LawRAGPipeline(OPENAI_API_KEY)
-    
-    # 索引文件
-    # data_file = "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/rag/data/qa.txt"
-    data_file = "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/rag/data/specific_offences_ch1.txt"
-    
+    """
+    主要執行函式
+    """
     try:
-        # 如果是第一次執行，建立索引
-        rag.index_documents(data_file)
-
+        # 初始化 RAG pipeline（不傳入 API 金鑰，讓它自動從環境變數載入）
+        rag = LawRAGPipeline()
+        
+        # 指定要處理的文件
+        data_file = "/Users/zoungming/Desktop/Codes/TsungMin_Pai_Tutor/Law_Bot/rag/data/specific_offences_ch1.txt"
+        
+        print(f"📁 處理文件：{data_file}")
+        
+        # 嘗試載入現有索引
+        rag.load_existing_index(data_file)
+        
+        # 如果沒有現有索引，建立新的
+        if not rag.vectorstore:
+            print("建立新索引...")
+            rag.index_documents(data_file)
+        
+        print("🎉 RAG 系統初始化完成！")
+        
+        # 簡單測試
+        if rag.qa_chain:
+            test_question = "什麼是竊盜罪？"
+            print(f"\n🧪 測試問題：{test_question}")
+            result = rag.query(test_question)
+            print(f"✅ 測試成功，回答長度：{len(result['answer'])} 字元")
+        
     except Exception as e:
-        print(f"發生錯誤：{e}")
-        print("\n建議檢查：")
-        print("1. 文件路徑是否正確")
-        print("2. 文件編碼是否正確")
-        print("3. 文件內容是否有可解析的結構")
+        print(f"❌ 執行失敗：{e}")
 
 if __name__ == "__main__":
     main()
